@@ -6,6 +6,15 @@
 # label <- classify(X, pars)
 # c_hat <- agg_class(X, alpha, allPars)
 
+# X: training data, row is a data point
+# B: Number of classifiers
+run_adaboost <- function(X, y, B) {
+	c <- adaboost(X,y,train_decision_stump,classify_decision_stump,B)
+	y_prime <- aggregate_weak_classifiers(X, c$voting_weights, c$classifiers)
+	error <- classifier_error(y,y_prime,1)
+	return(list(c=c,y_prime=y_prime,error=error))
+}
+
 
 # Weak Learner function (Decision Stump)
 # 
@@ -74,6 +83,41 @@ classify_decision_stump <- function(X, pars) {
 }
 
 
+# Implementation of iterative adaboost algorithm
+# X: training data (row is a data point)
+# y: training classes
+# train: training method for weak learner
+# classify: classification method for weak learner
+# B: number of weak learners to train
+adaboost <- function(X, y, train, classify, B) {
+  n <- length(X[,1])
+  # initialize weights to even distribution
+  w <- rep(1/n,n)
+  # initialize returns, voting_weights == alphas
+  voting_weights <- rep(0,B)
+  # parameters of classifiers
+  classifiers <- matrix(nrow=B,ncol=3)
+  
+  for(b in 1:B) {
+    # train a weak learner on the weighted data
+    classifiers[b,] <- train_decision_stump(X, w, y)
+    # classify data with weak learner
+    y_prime <- classify_decision_stump(X, classifiers[b,])
+    # compute the error of the weak learner
+    error <- classifier_error(y, y_prime, w)
+    # compute voting weights
+    voting_weights[b] <- log((1-error)/error)
+    # recompute weights
+    for(i in 1:n) {
+      if(y[i] != y_prime[i]) w[i] <- w[i] * exp(voting_weights[b])
+    }
+  }
+  
+  # return weights and parameters of weak learners
+  return(list(voting_weights=voting_weights,classifiers=classifiers))
+}
+
+
 # X: training data (rows are vectors of points)
 # voting_weights: denotes the vector of voting weights
 # classifiers: contains the parameters of all the weak learners
@@ -82,48 +126,21 @@ aggregate_weak_classifiers <- function(X, voting_weights, classifiers) {
 	n <- length(X[,1])
 	B <- length(classifiers[,1])
 	y_prime <- vector(mode='numeric', length=n)
-	y_votes <- matrix(nrows=B, ncols=n)
+	y_votes <- matrix(nrow=B, ncol=n)
 
 	for(b in 1:B) {
-		y_votes[b,] <- classify_decision_stump(X,classifiers[b])
+		y_votes[b,] <- classify_decision_stump(X,classifiers[b,])
 	}
 	for(i in 1:n) {
 		weighted_class <- 0
 		for(b in 1:B) {
-			weighted_class <- weighted_class + voting_weights[b] * y_votes[b]
+			weighted_class <- weighted_class + voting_weights[b] * y_votes[b,i]
 		}
 		y_prime[i] <- sign(weighted_class)
 	}
 	return(y_prime)
 }
 
-adaboost <- function(X, y, train, classify, B) {
-	n <- length(X[,1])
-	# initialize weights to even distribution
-	w <- rep(1/n,n)
-	# initialize returns, voting_weights == alphas
-	voting_weights <- rep(0,B)
-	# parameters of classifiers
-	classifiers <- matrix(nrow=B,ncol=3)
-
-	for(b in 1:B) {
-		# train a weak learner on the weighted data
-		classifiers[b] <- train_decision_stump(X, w, y)
-		# classify data with weak learner
-		y_prime <- classify_decision_stump(X, classifiers[b])
-		# compute the error of the weak learner
-		error <- classifier_error(y, y_prime, w)
-		# compute voting weights
-		voting_weights[b] <- log((1-error)/error)
-		# recompute weights
-		for(i in 1:n) {
-			if(y[i] != y_prime[i]) w[i] <- w[i] * exp(voting_weights[b])
-		}
-	}
-
-	# return weights and parameters of weak learners
-	return(list(voting_weights=voting_weights,classifiers=classifiers))
-}
 
 # Computes simple error for weighted classification
 # y: original class labels
