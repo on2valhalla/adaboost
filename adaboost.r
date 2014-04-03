@@ -9,7 +9,7 @@
 
 # Weak Learner function (Decision Stump)
 # 
-# X: a matrix, columns are training vectors x1..xn
+# X: a matrix, rows are training vectors x1..xn
 # w: vector containing the weights for each training vector x
 # y: vector containing class labels for each training vector x
 # return: a list which contains the parameters specifying the resulting 
@@ -56,7 +56,7 @@ train_decision_stump <- function(X, w, y) {
 
 # Applies a Weak learner to the data and gives class labels
 # 
-# X: the training data (columns are vectors of the data)
+# X: the training data (rows are vectors of the data)
 # pars: the result of a training function, here a triplet specifying decision
 # 	stumps (j, theta, m)
 classify_decision_stump <- function(X, pars) {
@@ -74,13 +74,50 @@ classify_decision_stump <- function(X, pars) {
 }
 
 
-# X: training data (columns are vectors of points)
-# alpha: denotes the vector of voting weights
-# allPars: contains the parameters of all the weak learners
-agg_class <- function(X, alpha, allPars) {
+# X: training data (rows are vectors of points)
+# voting_weights: denotes the vector of voting weights
+# classifiers: contains the parameters of all the weak learners
+aggregate_classifiers <- function(X, voting_weights, classifiers) {
 
 }
 
-adaboost <- function(X, y, train, classify) {
+adaboost <- function(X, y, train, classify, B) {
+	n <- length(X[,1])
+	# initialize weights to even distribution
+	w <- rep(1/n,n)
+	# initialize returns, voting_weights == alphas
+	voting_weights <- rep(0,B)
+	# parameters of classifiers
+	classifiers <- matrix(nrow=B,ncol=3)
 
+	for(b in 1:B) {
+		# train a weak learner on the weighted data
+		classifiers[b] <- train_decision_stump(X, w, y)
+		# classify data with weak learner
+		y_prime <- classify_decision_stump(X, classifiers[b])
+		# compute the error of the weak learner
+		error <- classifier_error(y, y_prime, w)
+		# compute voting weights
+		voting_weights[b] <- log((1-error)/error)
+		# recompute weights
+		for(i in 1:n) {
+			if(y[i] != y_prime[i]) w[i] <- w[i] * exp(voting_weights[b])
+		}
+	}
+
+	# return weights and parameters of weak learners
+	return(list(voting_weights=voting_weights,classifiers=classifiers))
 }
+
+# Computes simple error for weighted classification
+# y: original class labels
+# y_prime: new class labels
+# w: weights
+classifier_error <- function(y, y_prime, w) {
+	error <- 0
+	for(i in 1:length(y)) {
+		if(y[i] != y_prime[i]) error <- error + w[i]
+	}
+	return(error / sum(w))
+}
+
