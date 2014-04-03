@@ -20,7 +20,7 @@ train_decision_stump <- function(X, w, y) {
 	d <- length(X[1,])
 	n <- length(X[,1])
 
-	init_score <- w %*% y
+	init_score <- drop(w %*% y)
 	best_score <- init_score
 	best_j <- 1
 	best_theta <- 0
@@ -50,7 +50,7 @@ train_decision_stump <- function(X, w, y) {
 		}
 	}
 
-	return (best_j, best_theta, sign(best_score))
+	return (c(best_j, best_theta, sign(best_score)))
 }
 
 
