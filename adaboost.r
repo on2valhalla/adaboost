@@ -9,7 +9,8 @@
 # X: training data, row is a data point
 # B: Number of classifiers
 run_adaboost <- function(X, y, B) {
-	c <- adaboost(X,y,train_decision_stump,classify_decision_stump,B)
+	data <- cbind(data.frame(y),data.frame(X))
+	c <- adaboost(data,train_decision_stump,classify_decision_stump,B)
 	y_prime <- aggregate_weak_classifiers(X, c$voting_weights, c$classifiers)
 	error <- classifier_error(y,y_prime,rep(1,length(y)))
 	return(list(c=c,y_prime=y_prime,error=error))
@@ -18,7 +19,7 @@ run_adaboost <- function(X, y, B) {
 
 # Weak Learner function (Decision Stump)
 # 
-# X: a matrix, rows are training vectors x1..xn
+# X: a dataframe containing training data points
 # w: vector containing the weights for each training vector x
 # y: vector containing class labels for each training vector x
 # return: a list which contains the parameters specifying the resulting 
@@ -26,8 +27,8 @@ run_adaboost <- function(X, y, B) {
 # 
 train_decision_stump <- function(X, w, y) {
 	# get dimensions
-	d <- length(X[1,])
-	n <- length(X[,1])
+	d <- ncol(X)
+	n <- nrow(X)
 
 	init_score <- drop(w %*% y)
 	best_score <- init_score
@@ -69,7 +70,7 @@ train_decision_stump <- function(X, w, y) {
 # pars: the result of a training function, here a triplet specifying decision
 # 	stumps (j, theta, m)
 classify_decision_stump <- function(X, pars) {
-	n <- length(X[,1])
+	n <- nrow(X)
 	j <- pars[1]
 	theta <- pars[2]
 	m <- pars[3]
@@ -89,32 +90,35 @@ classify_decision_stump <- function(X, pars) {
 # train: training method for weak learner
 # classify: classification method for weak learner
 # B: number of weak learners to train
-adaboost <- function(X, y, train, classify, B) {
-  n <- length(X[,1])
-  # initialize weights to even distribution
-  w <- rep(1/n,n)
-  # initialize returns, voting_weights == alphas
-  voting_weights <- rep(0,B)
-  # parameters of classifiers
-  classifiers <- matrix(nrow=B,ncol=3)
-  
-  for(b in 1:B) {
-    # train a weak learner on the weighted data
-    classifiers[b,] <- train_decision_stump(X, w, y)
-    # classify data with weak learner
-    y_prime <- classify_decision_stump(X, classifiers[b,])
-    # compute the error of the weak learner
-    error <- classifier_error(y, y_prime, w)
-    # compute voting weights
-    voting_weights[b] <- log((1-error)/error)
-    # recompute weights
-    for(i in 1:n) {
-      if(y[i] != y_prime[i]) w[i] <- w[i] * exp(voting_weights[b])
-    }
-  }
-  
-  # return weights and parameters of weak learners
-  return(list(voting_weights=voting_weights,classifiers=classifiers))
+adaboost <- function(data, train, classify, B) {
+    X <- subset(data,select=-y)
+    y <- subset(data,select=y)[,1]
+    
+	n <- nrow(X)
+	# initialize weights to even distribution
+	w <- rep(1/n,n)
+	# initialize returns, voting_weights == alphas
+	voting_weights <- rep(0,B)
+	# parameters of classifiers
+	classifiers <- matrix(nrow=B,ncol=3)
+
+	for(b in 1:B) {
+	# train a weak learner on the weighted data
+	classifiers[b,] <- train_decision_stump(X, w, y)
+	# classify data with weak learner
+	y_prime <- classify_decision_stump(X, classifiers[b,])
+	# compute the error of the weak learner
+	error <- classifier_error(y, y_prime, w)
+	# compute voting weights
+	voting_weights[b] <- log((1-error)/error)
+	# recompute weights
+	for(i in 1:n) {
+	  if(y[i] != y_prime[i]) w[i] <- w[i] * exp(voting_weights[b])
+	}
+	}
+
+	# return weights and parameters of weak learners
+	return(list(voting_weights=voting_weights,classifiers=classifiers))
 }
 
 
@@ -123,7 +127,7 @@ adaboost <- function(X, y, train, classify, B) {
 # classifiers: contains the parameters of all the weak learners
 # return: classification labels for data
 aggregate_weak_classifiers <- function(X, voting_weights, classifiers) {
-	n <- length(X[,1])
+	n <- nrow(X)
 	B <- length(classifiers[,1])
 	y_prime <- vector(mode='numeric', length=n)
 	y_votes <- matrix(nrow=B, ncol=n)
@@ -154,3 +158,11 @@ classifier_error <- function(y, y_prime, w) {
 	return(error / sum(w))
 }
 
+
+# takes in a data frame and randomly samples into K subsets
+# if you give this a matrix, it will split correctly, but return vectors
+# as the list components instead of matrices
+split_k_fold <- function(X, K=5) {
+	indicies <- sample(1:K, nrow(X), replace=TRUE)
+	return(split(x,indicies)) # gives you a list with the 5 splits
+}
