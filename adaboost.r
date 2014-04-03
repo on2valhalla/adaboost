@@ -16,8 +16,41 @@
 # 	classifier, here a triplet (j, theta, m) specifying the decision stump
 # 
 train_decision_stump <- function(X, w, y) {
+	# get dimensions
+	d <- length(X[1,])
+	n <- length(X[,1])
 
-	return (j, theta, m)
+	init_score <- w %*% y
+	best_score <- init_score
+	best_j <- 1
+	best_theta <- 0
+
+	for(j in 1:d) {
+		# sort based on dimension so that we can find the
+		# optimal split in linear time
+		# ordered_X <- X[,order(X[j,])]
+
+		# re-initialize score for each dimension
+		score <- init_score
+
+		# sort indicies based on dimension so that we can find the
+		# optimal split in linear time
+		indicies <- order(X[,j])
+		last_i <- indicies[1]
+		# iterate over sorted indicies, and modify the score by the weighted
+		# class values updating the model if the best score is surpassed
+		# Achieves optimal split in O(nd)
+		for(i in indicies[2:n]) {
+			score <- score - w[i]*y[i]
+			if(X[i,j] != X[last_i,j] && score > best_score) {
+				best_score <- score
+				best_j <- j
+				best_theta <- (X[i,j] - X[last_i,j]) / 2
+			}
+		}
+	}
+
+	return (best_j, best_theta, sign(best_score))
 }
 
 
@@ -35,9 +68,9 @@ classify_decision_stump <- function(X, pars) {
 	y_prime <- vector(mode='numeric',length=n)
 
 	for(i in 1:n) {
-		y_prime[i] <- ifelse(X[j,i] > theta, m, -m)
+		y_prime[i] <- ifelse(X[i,j] > theta, m, -m)
 	}
-	return y_prime
+	return(y_prime)
 }
 
 
@@ -45,5 +78,9 @@ classify_decision_stump <- function(X, pars) {
 # alpha: denotes the vector of voting weights
 # allPars: contains the parameters of all the weak learners
 agg_class <- function(X, alpha, allPars) {
+
+}
+
+adaboost <- function(X, y, train, classify) {
 
 }
