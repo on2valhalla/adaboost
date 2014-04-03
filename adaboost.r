@@ -11,7 +11,7 @@
 run_adaboost <- function(X, y, B) {
 	c <- adaboost(X,y,train_decision_stump,classify_decision_stump,B)
 	y_prime <- aggregate_weak_classifiers(X, c$voting_weights, c$classifiers)
-	error <- classifier_error(y,y_prime,1)
+	error <- classifier_error(y,y_prime,rep(1,length(y)))
 	return(list(c=c,y_prime=y_prime,error=error))
 }
 
