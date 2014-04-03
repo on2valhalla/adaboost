@@ -77,8 +77,24 @@ classify_decision_stump <- function(X, pars) {
 # X: training data (rows are vectors of points)
 # voting_weights: denotes the vector of voting weights
 # classifiers: contains the parameters of all the weak learners
-aggregate_classifiers <- function(X, voting_weights, classifiers) {
+# return: classification labels for data
+aggregate_weak_classifiers <- function(X, voting_weights, classifiers) {
+	n <- length(X[,1])
+	B <- length(classifiers[,1])
+	y_prime <- vector(mode='numeric', length=n)
+	y_votes <- matrix(nrows=B, ncols=n)
 
+	for(b in 1:B) {
+		y_votes[b,] <- classify_decision_stump(X,classifiers[b])
+	}
+	for(i in 1:n) {
+		weighted_class <- 0
+		for(b in 1:B) {
+			weighted_class <- weighted_class + voting_weights[b] * y_votes[b]
+		}
+		y_prime[i] <- sign(weighted_class)
+	}
+	return(y_prime)
 }
 
 adaboost <- function(X, y, train, classify, B) {
