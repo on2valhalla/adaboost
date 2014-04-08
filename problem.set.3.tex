@@ -1,0 +1,224 @@
+% --------------------------------------------------------------
+% This is all preamble stuff that you don't have to worry about.
+% Head down to where it says "Start here"
+% --------------------------------------------------------------
+ 
+\documentclass[11pt]{article}
+ 
+\usepackage[margin=.65in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb,titlesec,changepage}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{fixltx2e}
+\lstset{ %
+language=R,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+\newtheoremstyle{quest}{\topsep}{\topsep}{}{}{\bfseries}{}{ }{\thmname{#1}\thmnote{ #3}.}
+\theoremstyle{quest}
+\newtheorem*{definition}{Definition}
+\newtheorem*{theorem}{Theorem}
+\newtheorem*{question}{Question}
+\newtheorem*{exercise}{Exercise}
+\newtheorem*{challengeproblem}{Challenge Problem}
+
+%% If you want to use a function like ''sin'' or ''cos'', you can do it like this
+%% (we probably won't have much use for this)
+% \DeclareMathOperator{\sin}{sin}   %% just an example (it's already defined)
+%% If you want to define a new command, you can do it like this:
+\newcommand{\problem}[1]{\section{#1}}        % Problem.
+\newcommand{\subproblem}[1]{\subsection{#1}}      % Sub Problem
+\newcommand{\subsubproblem}[1]{\subsubsection{#1}}      % Sub Problem
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Sup}{\textsuperscript}
+\newcommand{\Sub}{\textsubscript}
+
+% \setcounter{section}{-1}
+\titleformat{\section}{\normalfont\Large\bfseries}{Problem \thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\it}{\hspace{1em}\bf\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\it}{\hspace{1.5em}\bf\thesubsubsection}{1em}{}
+\renewcommand{\thesubsubsection}{\thesubsection\alph{subsubsection}}
+ 
+\begin{document}
+ 
+% --------------------------------------------------------------
+%                         Start here
+% --------------------------------------------------------------
+ 
+\title{Homework 3}
+\author{\small{Jason Mann (jcm2207)}\\
+\small{Statistical Machine Learning (STAT W4400)}}
+\date{}
+ 
+\maketitle
+
+
+\problem{\textit{l\Sub{q}} regression}
+
+\subproblem{Does one/none/both of the cost functions encourage sparse estimates? If so, which one? Explain your answer.}
+
+
+\begin{adjustwidth}{3.5em}{0em}
+The cost function shown on the left will encourage sparse estimates due to the cost increasing slowly along the axes, which is shown by the extreme points of the cost function. i.e. points further from the origin can have a relatively low cost.
+\end{adjustwidth}
+
+\subproblem{Which of the points would achieve the smallest cost under the \textit{l\Sub{q}}-constrained least squares cost function? For each of the two cases, name the respective point and give a brief explanation for your answer.}
+
+\begin{adjustwidth}{3.5em}{0em}
+Left: \textit{x\Sub{3}} is the point with the least cost. \\
+Right: \textit{x\Sub{4}} is the point with the least cost. \\
+The figures drawn for the cost functions can be seen as contour lines for the cost function, and \textit{x\Sub{3}} on the left and \textit{x\Sub{4}} on the right both are on the closest contour to the origin.
+\end{adjustwidth}
+
+% \subproblem{Which cost function does the perceptron cost function approximate, and why do we approximate it?}
+% \begin{adjustwidth}{3.5em}{0em}
+% The perceptron cost function approximates empirical risk based on a 0-1 loss cost function. We must approximate, while the 0-1 loss function creates a piecewise linear function that creates a non-trivial optimization search space.
+% \end{adjustwidth}
+
+\problem{Combining Kernels}
+\subproblem{Show that for any positive real number $a, k(x, x^{'}) := ak_1(x, x^{'})$ is a kernel}
+
+\begin{adjustwidth}{3.5em}{0em}
+If $a$ is positive, then $\sqrt{a}*\sqrt{a}=a$
+\end{adjustwidth}
+\begin{align*}
+ \phi^{'}(x) &= \sqrt{a}\phi(x) \\
+ak_1(x, x^{'}) &= a * <\phi(x), \phi(x^{'})> \\
+&= a * \sum_i{\phi(x)_i\phi(x^{'})_i} = \sum_i{a\phi(x)_i\phi(x^{'})_i} \\
+&= \sum_i{\sqrt{a}\phi(x)_i\sqrt{a}\phi(x^{'})_i} \\
+&= \sum_i{ \phi^{'}(x)_i \phi^{'}(x^{'})_i} = <\phi^{'}(x), \phi^{'}(x^{'})> 
+\end{align*}
+\begin{adjustwidth}{3.5em}{0em}
+Therefore because $ak_1(x, x^{'}) := <\phi^{'}(x), \phi^{'}(x^{'})>$ it follows that $k(x,x^{'})$ is a kernel
+\end{adjustwidth}
+
+
+\subproblem{Show that $k(x, x^{'}) := k_1(x, x^{'})k_2(x, x^{'})$ is a kernel}
+
+\begin{align*}
+k(x, x^{'}) &= k_1(x, x^{'})k_2(x, x^{'}) \\
+ 			&= <\phi_1(x), \phi_1(x^{'})><\phi_2(x), \phi_2(x^{'})> \\
+ 			&= \sum_i{\phi_1(x)_i\phi_1(x^{'})_i} * \sum_i{\phi_2(x)_i\phi_2(x^{'})_i} \\
+ 			&= \sum_i{\phi_1(x)_i\phi_2(x)_i\phi_1(x^{'})_i\phi_2(x^{'})_i} \\
+\phi^{'}(x) &= \phi_1(x)\phi_2(x) \\
+k(x, x^{'}) &= \sum_i{ \phi^{'}(x)_i \phi^{'}(x^{'})_i} = <\phi^{'}(x), \phi^{'}(x^{'})> 
+\end{align*}
+
+\subproblem{Show that for any positive integer $p, k(x, x^{'}) := k_1(x, x^{'})^p$ is a kernel}
+
+\begin{adjustwidth}{3.5em}{0em}
+Because we know that $k(x, x^{'}) := k_1(x, x^{'})k_2(x, x^{'})$ is a kernel from above, we can build kernels from successive multiplications of $k_1$, i.e. $k_2(x, x^{'}) = k_1(x, x^{'})k_1(x, x^{'}), ...\; k_p(x, x^{'}) = k_{p/2}(x, x^{'})k_{p/2}(x, x^{'})$. If p is even then $k(x, x^{'}) := k_{p/2}(x, x^{'})k_{p/2}(x, x^{'})$ and $k(x, x^{'}) := k_{p-1}(x, x^{'})k_{1}(x, x^{'})$ if p is odd. Therefore if $k_1$ is a kernel, then k is also a kernel.
+\end{adjustwidth}
+
+
+\vspace{1em}
+\problem{Boosting}
+
+\subproblem{Plots of misclassification rate.}
+\subsubproblem{Rate as function of margin parameter.}
+\begin{center}
+% \includegraphics[width=.49\textwidth]{linear_tune}
+\end{center}
+
+
+\subsubproblem{Rate as function of margin parameter and kernel bandwidth.}
+\begin{center}
+% \includegraphics[width=.49\textwidth]{rbf_tune_margin}
+% \includegraphics[width=.49\textwidth]{rbf_tune_bandwidth}
+\end{center}
+
+\subproblem{Report the test set estimates of misclassification rates. Is a linear SVM a good choice for this data?}
+       
+\begin{adjustwidth}{3.5em}{0em}  
+Linear SVM:
+\begin{lstlisting}  
+linear_pred FALSE TRUE
+      FALSE    14    0
+      TRUE      3   23
+\end{lstlisting}
+Misclassification rate: .075
+\\\\
+RBF Kernel SVM:
+\begin{lstlisting}
+rbf_pred FALSE TRUE
+   FALSE    17    0
+   TRUE      0   23
+\end{lstlisting}
+Misclassification rate: .000
+\\\\
+It appears from these results that the radial based kernel can fit the results better, though when averaged out over multiple runs, the difference between the two models is only 2-3 percentage points. However, it seems that a non-linear kernel is the obvious choice here, with its near perfect performance.
+
+\end{adjustwidth}
+
+\subproblem{Code.}
+
+\begin{adjustwidth}{3.5em}{0em}
+Function to split data into test and training sets:
+\begin{lstlisting}
+splitdf <- function(dataframe, test_percent=.2, seed=NULL) {
+    if (!is.null(seed)) set.seed(seed)
+    i <- sample(1:nrow(dataframe), trunc(.20*nrow(dataframe)))
+    i <- sort(i)
+    testset <- dataframe[i,]
+    trainset <- dataframe[-i,]
+    return(list(testset=testset, trainset=trainset))
+}
+\end{lstlisting}
+
+SVM usage code:
+\begin{lstlisting}
+require("e1071")
+source("utils.R")
+
+uspsdata <- read.table('uspsdata.txt', sep='\t')
+uspsclass <- read.table('uspscl.txt', sep='\t')
+
+uspsdata <- cbind(uspsdata, uspsclass)
+colnames(uspsdata)[ncol(uspsdata)] <- "Class"
+uspsdata$Class[uspsdata$Class == -1] <- FALSE
+uspsdata$Class <- as.logical(uspsdata$Class)
+
+d <- splitdf(uspsdata, .2) 
+test <- d$testset
+train <- d$trainset
+
+linear_tune <- tune(svm, Class ~ ., data=train, kernel='linear', type='C-classification', tunecontrol=tune.control(random=TRUE, sampling="cross"), ranges=list(cost=2^(-2:2)))
+linear_model <- linear_tune$best.model
+rbf_tune <- tune(svm, Class ~ ., data=train, kernel='radial', type='C-classification', tunecontrol=tune.control(random=TRUE, sampling="cross"), ranges=list(gamma=2^(-9:-3), cost=2^(-2:1)))
+rbf_model <- rbf_tune$best.model
+
+linear_pred <- predict(linear_model, test)
+rbf_pred <- predict(rbf_model, test)
+
+print(table(linear_pred, test$Class))
+print(table(rbf_pred, test$Class))
+
+plot(linear_tune$performances$cost,linear_tune$performances$error, xlab='Margin', ylab='Error', main='Linear Model Tuning')
+plot(rbf_tune$performances$gamma,rbf_tune$performances$error, xlab='Bandwidth', ylab='Error', main='RBF Model Tuning')
+\end{lstlisting}
+\end{adjustwidth}
+
+
+%%%% don't delete the last line!
+\end{document}
