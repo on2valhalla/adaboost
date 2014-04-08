@@ -56,46 +56,61 @@ run_basic_adaboost <- function(X, y, B) {
                 final_error=test_error))
 }
 
+
+# X: training data, row is a data point
+# y: vector of class labels for X
+# K: Number of folds
+# B: Number of classifiers
 run_kfold_adaboost <- function(X, y, B, K) {
-    # data <- cbind(data.frame(y),data.frame(X))
+    # randomly sample indices
     idxs <- sample(1:nrow(X), nrow(X) * 0.8, replace=FALSE)
     test_data <- list(X=X[-idxs,], y=y[-idxs])
     train_data <- list(X=X[idxs,], y=y[idxs])
+    # create folds for cross validation
     tr_folds <- split_k_fold(train_data$X, train_data$y, K)
 
+    # prepare return variables
     errors <- list(test=matrix(nrow=0,ncol=B),train=matrix(nrow=0,ncol=B))
-
     classifiers <- list()
     best_class <- NA
     best_error <- 1
 
+    # progress bar
     pb <- create_progress_bar("text")
     pb$init(K)
+
     for(k in 1:K) {
+        # combine all folds except k into the training data
         tr_fold <- list(X=subset(tr_folds$X, (tr_folds$folds != k)),
                         y=subset(tr_folds$y, (tr_folds$folds != k)))
         test_fold <- list(X=subset(tr_folds$X, (tr_folds$folds == k)),
                         y=subset(tr_folds$y, (tr_folds$folds == k)))
 
+        # run adaboost on the combined training data
         result <- adaboost(tr_fold, train_decision_stump,
             classify_decision_stump, B, test_fold)
 
+        # append the alpha scores to the classifier matrix
         classifiers <- c(classifiers,list(as.matrix(cbind(result$classifiers,result$alphas))))
-        # max_idx <- order(result$agg_test_errors)[1]
+
+        # keep track of the best set of weak learners
         if(result$agg_test_errors[length(result$agg_test_errors)] < best_error) {
             best_class <- list(classifiers=result$classifiers,
                                 alphas=result$alphas)
             best_error <- result$agg_test_errors
         }
 
+        # retain the aggregated errors
         length(result$agg_test_errors) <- B
         length(result$agg_training_errors) <- B
         errors$test <- rbind(errors$test,result$agg_test_errors)
         errors$train <- rbind(errors$train,result$agg_training_errors)
 
+        # progress bar increment
         pb$step()
     }
 
+    # run final test classification on the held out test data with the best classifier
     test_data$y_prime <- aggregate_weak_classifiers(test_data$X, best_class$alphas, 
                         best_class$classifiers, classify_decision_stump)
     test_data$error <- classifier_error(test_data$y, test_data$y_prime)
@@ -104,8 +119,8 @@ run_kfold_adaboost <- function(X, y, B, K) {
 }
 
 # Implementation of simple iterative adaboost algorithm
-# X: training data (row is a data point)
-# y: training classes
+# train_data: training data (row is a data point combined with class label)
+# test_data: test data same format as training data
 # train: training method for weak learner
 # classify: classification method for weak learner
 # B: number of weak learners to train
@@ -124,6 +139,7 @@ adaboost <- function(train_data, train, classify, B, test_data=list()) {
     agg_training_errors <- vector()
     agg_test_errors <- vector()
 
+    # progress bar
     pb <- create_progress_bar("text")
     pb$init(B)
     for(b in 1:B) {
@@ -136,8 +152,6 @@ adaboost <- function(train_data, train, classify, B, test_data=list()) {
 
         # compute voting weights
         alpha <- log(1/error) - .1 * ifelse(b>1,alphas[b-1],1)
-        # check for no improvement
-        # if(alpha == 0) break
 
         # recompute weights
         for(i in 1:n) {
@@ -149,8 +163,8 @@ adaboost <- function(train_data, train, classify, B, test_data=list()) {
         training_errors <- c(training_errors,error)
         alphas <- c(alphas,alpha)
 
-        # single classifier test error
         if(length(test_data) > 0){
+            # single classifier test error
             y_prime <- classify(test_data$X, classifier)
             test_errors <- c(test_errors,classifier_error(test_data$y, y_prime))
             

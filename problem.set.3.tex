@@ -132,93 +132,244 @@ Because we know that $k(x, x^{'}) := k_1(x, x^{'})k_2(x, x^{'})$ is a kernel fro
 \end{adjustwidth}
 
 
+
+
+
 \vspace{1em}
 \problem{Boosting}
 
-\subproblem{Plots of misclassification rate.}
-\subsubproblem{Rate as function of margin parameter.}
-\begin{center}
-% \includegraphics[width=.49\textwidth]{linear_tune}
-\end{center}
-
-
-\subsubproblem{Rate as function of margin parameter and kernel bandwidth.}
-\begin{center}
-% \includegraphics[width=.49\textwidth]{rbf_tune_margin}
-% \includegraphics[width=.49\textwidth]{rbf_tune_bandwidth}
-\end{center}
-
-\subproblem{Report the test set estimates of misclassification rates. Is a linear SVM a good choice for this data?}
-       
+\subproblem{Implement the AdaBoost algorithm in R.}
 \begin{adjustwidth}{3.5em}{0em}  
-Linear SVM:
-\begin{lstlisting}  
-linear_pred FALSE TRUE
-      FALSE    14    0
-      TRUE      3   23
-\end{lstlisting}
-Misclassification rate: .075
-\\\\
-RBF Kernel SVM:
 \begin{lstlisting}
-rbf_pred FALSE TRUE
-   FALSE    17    0
-   TRUE      0   23
-\end{lstlisting}
-Misclassification rate: .000
-\\\\
-It appears from these results that the radial based kernel can fit the results better, though when averaged out over multiple runs, the difference between the two models is only 2-3 percentage points. However, it seems that a non-linear kernel is the obvious choice here, with its near perfect performance.
 
+# Implementation of simple iterative adaboost algorithm
+# train_data: training data (row is a data point combined with class label)
+# test_data: test data same format as training data
+# train: training method for weak learner
+# classify: classification method for weak learner
+# B: number of weak learners to train
+adaboost <- function(train_data, train, classify, B, test_data=list()) {
+    X <- train_data$X
+    y <- train_data$y
+    n <- nrow(X)
+    # initialize weights to even distribution
+    w <- rep(1/n,n)
+
+    # initialize returns
+    classifiers <- matrix(nrow=0,ncol=3)
+    training_errors <- vector()
+    alphas <- vector()
+    test_errors <- vector()
+    agg_training_errors <- vector()
+    agg_test_errors <- vector()
+
+    # progress bar
+    pb <- create_progress_bar("text")
+    pb$init(B)
+    for(b in 1:B) {
+        # train a weak learner on the weighted data
+        classifier <- train(X, w, y)
+        # classify data with weak learner
+        y_prime <- classify(X, classifier)
+        # compute the error of the weak learner
+        error <- classifier_error(y, y_prime, w=w)
+
+        # compute voting weights
+        alpha <- log(1/error) - .1 * ifelse(b>1,alphas[b-1],1)
+
+        # recompute weights
+        for(i in 1:n) {
+            if(y[i] != y_prime[i]) w[i] <- w[i] * exp(alpha)
+        }
+
+        # store data
+        classifiers <- rbind(classifiers, classifier)
+        training_errors <- c(training_errors,error)
+        alphas <- c(alphas,alpha)
+
+        if(length(test_data) > 0){
+            # single classifier test error
+            y_prime <- classify(test_data$X, classifier)
+            test_errors <- c(test_errors,classifier_error(test_data$y, y_prime))
+            
+            # aggregated training and test error
+            y_prime <- aggregate_weak_classifiers(X, alphas, classifiers, classify)
+            agg_training_errors <- c(agg_training_errors, classifier_error(y, y_prime))
+            y_prime <- aggregate_weak_classifiers(test_data$X, alphas, classifiers, classify)
+            agg_test_errors <- c(agg_test_errors, classifier_error(test_data$y, y_prime))
+        }
+        pb$step()
+    }
+    cat('\n')
+
+    # return weights and parameters of weak learners
+    return(list(classifiers=classifiers,alphas=alphas,
+            training_errors=training_errors,test_errors=test_errors,
+            agg_training_errors=agg_training_errors,
+            agg_test_errors=agg_test_errors))
+}
+
+\end{lstlisting}
 \end{adjustwidth}
 
-\subproblem{Code.}
 
-\begin{adjustwidth}{3.5em}{0em}
-Function to split data into test and training sets:
+
+\subproblem{Implement the train and classify functions for decision stumps.}
+\begin{adjustwidth}{3.5em}{0em}  
 \begin{lstlisting}
-splitdf <- function(dataframe, test_percent=.2, seed=NULL) {
-    if (!is.null(seed)) set.seed(seed)
-    i <- sample(1:nrow(dataframe), trunc(.20*nrow(dataframe)))
-    i <- sort(i)
-    testset <- dataframe[i,]
-    trainset <- dataframe[-i,]
-    return(list(testset=testset, trainset=trainset))
+
+# Weak Learner function (Decision Stump)
+# 
+# X: a dataframe containing training data points
+# w: vector containing the weights for each training vector x
+# y: vector containing class labels for each training vector x
+# return: a list which contains the parameters specifying the resulting 
+#   classifier, here a triplet (j, theta, m) specifying the decision stump
+# 
+train_decision_stump <- function(X, w, y) {
+    # get dimensions
+    d <- ncol(X)
+    n <- nrow(X)
+    
+    best_score <- 0
+    best_j <- 1
+    best_theta <- 0
+
+    for(j in 1:d) {
+        # re-initialize score for each dimension
+        score <- 0
+
+        # sort indicies based on dimension so that we can find the
+        # optimal split in linear time
+        indicies <- order(X[,j])
+        last_i <- indicies[1]
+        # iterate over sorted indicies, and modify the score by the weighted
+        # class values updating the model if the best score is surpassed
+        # Achieves optimal split in O(nd)
+        for(i in indicies[2:n]) {
+            score <- score - 2*w[i]*y[i]
+            if(X[i,j] != X[last_i,j] && abs(score) > abs(best_score)) {
+                best_score <- score
+                best_j <- j
+                best_theta <- (X[i,j] + X[last_i,j]) / 2
+            }
+            last_i <- i
+        }
+    }
+
+    return (c(best_j, best_theta, sign(best_score)))
+}
+
+
+# Applies a Weak learner to the data and gives class labels
+# 
+# X: the training data (rows are vectors of the data)
+# pars: the result of a training function, here a triplet specifying decision
+#   stumps (j, theta, m)
+classify_decision_stump <- function(X, pars) {
+    n <- nrow(X)
+    j <- pars[1]
+    theta <- pars[2]
+    m <- pars[3]
+    # initialize class labels
+    y_prime <- vector(mode='numeric',length=n)
+
+    for(i in 1:n) {
+        y_prime[i] <- ifelse(X[i,j] > theta, m, -m)
+    }
+    return(y_prime)
+}
+
+
+
+# X: training data (rows are vectors of points)
+# alphas: denotes the vector of voting weights
+# classifiers: contains the parameters of all the weak learners
+# return: classification labels for data
+aggregate_weak_classifiers <- function(X, alphas, classifiers, classify) {
+    classifiers <- as.matrix(classifiers)
+    n <- nrow(X)
+    B <- nrow(classifiers)
+    y_prime <- vector(mode='numeric', length=n)
+    y_votes <- matrix(nrow=B, ncol=n)
+
+    for(b in 1:B) {
+        y_votes[b,] <- classify(X,classifiers[b,])
+    }
+    for(i in 1:n) {
+        weighted_class <- 0
+        for(b in 1:B) {
+            weighted_class <- weighted_class + alphas[b] * y_votes[b,i]
+        }
+        y_prime[i] <- sign(weighted_class)
+    }
+    return(y_prime)
 }
 \end{lstlisting}
+\end{adjustwidth}
 
-SVM usage code:
+
+\subproblem{Run your algorithm on USPS data with cross validation.}
+\begin{adjustwidth}{3.5em}{0em}  
 \begin{lstlisting}
-require("e1071")
-source("utils.R")
+run_kfold_adaboost <- function(X, y, B, K) {
+    # data <- cbind(data.frame(y),data.frame(X))
+    idxs <- sample(1:nrow(X), nrow(X) * 0.8, replace=FALSE)
+    test_data <- list(X=X[-idxs,], y=y[-idxs])
+    train_data <- list(X=X[idxs,], y=y[idxs])
+    tr_folds <- split_k_fold(train_data$X, train_data$y, K)
 
-uspsdata <- read.table('uspsdata.txt', sep='\t')
-uspsclass <- read.table('uspscl.txt', sep='\t')
+    errors <- list(test=matrix(nrow=0,ncol=B),train=matrix(nrow=0,ncol=B))
 
-uspsdata <- cbind(uspsdata, uspsclass)
-colnames(uspsdata)[ncol(uspsdata)] <- "Class"
-uspsdata$Class[uspsdata$Class == -1] <- FALSE
-uspsdata$Class <- as.logical(uspsdata$Class)
+    classifiers <- list()
+    best_class <- NA
+    best_error <- 1
 
-d <- splitdf(uspsdata, .2) 
-test <- d$testset
-train <- d$trainset
+    pb <- create_progress_bar("text")
+    pb$init(K)
+    for(k in 1:K) {
+        tr_fold <- list(X=subset(tr_folds$X, (tr_folds$folds != k)),
+                        y=subset(tr_folds$y, (tr_folds$folds != k)))
+        test_fold <- list(X=subset(tr_folds$X, (tr_folds$folds == k)),
+                        y=subset(tr_folds$y, (tr_folds$folds == k)))
 
-linear_tune <- tune(svm, Class ~ ., data=train, kernel='linear', type='C-classification', tunecontrol=tune.control(random=TRUE, sampling="cross"), ranges=list(cost=2^(-2:2)))
-linear_model <- linear_tune$best.model
-rbf_tune <- tune(svm, Class ~ ., data=train, kernel='radial', type='C-classification', tunecontrol=tune.control(random=TRUE, sampling="cross"), ranges=list(gamma=2^(-9:-3), cost=2^(-2:1)))
-rbf_model <- rbf_tune$best.model
+        result <- adaboost(tr_fold, train_decision_stump,
+            classify_decision_stump, B, test_fold)
 
-linear_pred <- predict(linear_model, test)
-rbf_pred <- predict(rbf_model, test)
+        classifiers <- c(classifiers,list(as.matrix(cbind(result$classifiers,result$alphas))))
+        # max_idx <- order(result$agg_test_errors)[1]
+        if(result$agg_test_errors[length(result$agg_test_errors)] < best_error) {
+            best_class <- list(classifiers=result$classifiers,
+                                alphas=result$alphas)
+            best_error <- result$agg_test_errors
+        }
 
-print(table(linear_pred, test$Class))
-print(table(rbf_pred, test$Class))
+        length(result$agg_test_errors) <- B
+        length(result$agg_training_errors) <- B
+        errors$test <- rbind(errors$test,result$agg_test_errors)
+        errors$train <- rbind(errors$train,result$agg_training_errors)
 
-plot(linear_tune$performances$cost,linear_tune$performances$error, xlab='Margin', ylab='Error', main='Linear Model Tuning')
-plot(rbf_tune$performances$gamma,rbf_tune$performances$error, xlab='Bandwidth', ylab='Error', main='RBF Model Tuning')
+        pb$step()
+    }
+
+    test_data$y_prime <- aggregate_weak_classifiers(test_data$X, best_class$alphas, 
+                        best_class$classifiers, classify_decision_stump)
+    test_data$error <- classifier_error(test_data$y, test_data$y_prime)
+    return(list(errors=errors, classifiers=classifiers,
+                best_class=best_class, final_error=test_data$error))
+}
 \end{lstlisting}
 \end{adjustwidth}
 
+
+
+
+\subproblem{Plot the training error and the test error as a function of b}
+\begin{adjustwidth}{3.5em}{0em}  
+\begin{lstlisting}
+
+\end{lstlisting}
+\end{adjustwidth}
 
 %%%% don't delete the last line!
 \end{document}
