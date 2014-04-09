@@ -1,4 +1,6 @@
-# Homework problem 1
+# Homework 3 STAT W4400
+# Jason Mann
+# jcm2207@columbia.edu
 # Implement adaboost algorithm
 
 # function calls of form
@@ -16,23 +18,29 @@ run_adaboost <-function() {
     X <- data.frame(read.table('uspsdata.txt'))
     y <- scan('uspscl.txt')
 
-    results <- run_basic_adaboost(X,y,10)
-    kfold_results <- run_kfold_adaboost(X,y,100,5)
+    cat('Basic Adaboost\n')
+    results <- run_basic_adaboost(X,y,100,F)
+
+    cat('Adaboost with K-fold cross validation\n')
+    kfold_results <- run_kfold_adaboost(X,y,100,5,F)
 
 
-    plot(lowess(results$errors$agg_train), type='l')
-    plot(lowess(results$errors$agg_test), type='l')
-    matplot(colMeans(kfold_results$errors$train), type='l',
-        xlab='Adaboost Iteration',ylab='Aggregated Mean Training Error')
-    matplot(colMeans(kfold_results$errors$test), type='l',
-        xlab='Adaboost Iteration',ylab='Aggregated Mean Test Error')
+    plot(results$errors$agg_train, type='l')
+    plot(results$errors$agg_test, type='l')
+    matplot(t(kfold_results$errors$train), type='l', xlab='Adaboost Iteration',ylab='Aggregated Mean Training Error', lty=5,lwd=2, col=c(2,3,4,8,6))
+    lines(colMeans(kfold_results$errors$train),lwd=2)
+    title(sub='Solid line is mean of independent k-fold data', cex.sub=.8)
+    matplot(t(kfold_results$errors$test), type='l', xlab='Adaboost Iteration',ylab='Aggregated Mean Test Error', lty=5,lwd=2, col=c(2,3,4,8,6))
+    lines(colMeans(kfold_results$errors$test),lwd=2)
+    title(sub='Solid line is mean of independent k-fold data', cex.sub=.8)
 }
 
 # X: training data, row is a data point
 # B: Number of classifiers
-run_basic_adaboost <- function(X, y, B) {
-    # idxs <- sample(1:nrow(X), nrow(X) * 0.8, replace=FALSE)
-    idxs <- 1:floor(.8*nrow(X))
+run_basic_adaboost <- function(X, y, B, randomTest=T) {
+    # randomly sample indices
+    if(randomTest) idxs <- sample(1:nrow(X), nrow(X) * 0.8, replace=FALSE)
+    else idxs <- 1:floor(.8*nrow(X))
     test_data <- list(X=X[-idxs,], y=y[-idxs])
     tr_data <- list(X=X[idxs,], y=y[idxs])
 
@@ -61,9 +69,10 @@ run_basic_adaboost <- function(X, y, B) {
 # y: vector of class labels for X
 # K: Number of folds
 # B: Number of classifiers
-run_kfold_adaboost <- function(X, y, B, K) {
+run_kfold_adaboost <- function(X, y, B, K, randomTest=T) {
     # randomly sample indices
-    idxs <- sample(1:nrow(X), nrow(X) * 0.8, replace=FALSE)
+    if(randomTest) idxs <- sample(1:nrow(X), nrow(X) * 0.8, replace=FALSE)
+    else idxs <- 1:floor(.8*nrow(X))
     test_data <- list(X=X[-idxs,], y=y[-idxs])
     train_data <- list(X=X[idxs,], y=y[idxs])
     # create folds for cross validation
@@ -97,7 +106,7 @@ run_kfold_adaboost <- function(X, y, B, K) {
         if(result$agg_test_errors[length(result$agg_test_errors)] < best_error) {
             best_class <- list(classifiers=result$classifiers,
                                 alphas=result$alphas)
-            best_error <- result$agg_test_errors
+            best_error <- result$agg_test_errors[length(result$agg_test_errors)]
         }
 
         # retain the aggregated errors

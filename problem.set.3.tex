@@ -74,27 +74,23 @@ escapeinside={\%*}{*)}          % if you want to add a comment within your code
 \maketitle
 
 
-\problem{\textit{l\Sub{q}} regression}
+\problem{$l_q$ regression}
 
 \subproblem{Does one/none/both of the cost functions encourage sparse estimates? If so, which one? Explain your answer.}
-
-
 \begin{adjustwidth}{3.5em}{0em}
 The cost function shown on the left will encourage sparse estimates due to the cost increasing slowly along the axes, which is shown by the extreme points of the cost function. i.e. points further from the origin can have a relatively low cost.
 \end{adjustwidth}
 
-\subproblem{Which of the points would achieve the smallest cost under the \textit{l\Sub{q}}-constrained least squares cost function? For each of the two cases, name the respective point and give a brief explanation for your answer.}
 
+\subproblem{Which of the points would achieve the smallest cost under the \textit{l\Sub{q}}-constrained least squares cost function? For each of the two cases, name the respective point and give a brief explanation for your answer.}
 \begin{adjustwidth}{3.5em}{0em}
 Left: \textit{x\Sub{3}} is the point with the least cost. \\
 Right: \textit{x\Sub{4}} is the point with the least cost. \\
 The figures drawn for the cost functions can be seen as contour lines for the cost function, and \textit{x\Sub{3}} on the left and \textit{x\Sub{4}} on the right both are on the closest contour to the origin.
 \end{adjustwidth}
 
-% \subproblem{Which cost function does the perceptron cost function approximate, and why do we approximate it?}
-% \begin{adjustwidth}{3.5em}{0em}
-% The perceptron cost function approximates empirical risk based on a 0-1 loss cost function. We must approximate, while the 0-1 loss function creates a piecewise linear function that creates a non-trivial optimization search space.
-% \end{adjustwidth}
+
+
 
 \problem{Combining Kernels}
 \subproblem{Show that for any positive real number $a, k(x, x^{'}) := ak_1(x, x^{'})$ is a kernel}
@@ -115,7 +111,6 @@ Therefore because $ak_1(x, x^{'}) := <\phi^{'}(x), \phi^{'}(x^{'})>$ it follows 
 
 
 \subproblem{Show that $k(x, x^{'}) := k_1(x, x^{'})k_2(x, x^{'})$ is a kernel}
-
 \begin{align*}
 k(x, x^{'}) &= k_1(x, x^{'})k_2(x, x^{'}) \\
  			&= <\phi_1(x), \phi_1(x^{'})><\phi_2(x), \phi_2(x^{'})> \\
@@ -125,8 +120,8 @@ k(x, x^{'}) &= k_1(x, x^{'})k_2(x, x^{'}) \\
 k(x, x^{'}) &= \sum_i{ \phi^{'}(x)_i \phi^{'}(x^{'})_i} = <\phi^{'}(x), \phi^{'}(x^{'})> 
 \end{align*}
 
-\subproblem{Show that for any positive integer $p, k(x, x^{'}) := k_1(x, x^{'})^p$ is a kernel}
 
+\subproblem{Show that for any positive integer $p, k(x, x^{'}) := k_1(x, x^{'})^p$ is a kernel}
 \begin{adjustwidth}{3.5em}{0em}
 Because we know that $k(x, x^{'}) := k_1(x, x^{'})k_2(x, x^{'})$ is a kernel from above, we can build kernels from successive multiplications of $k_1$, i.e. $k_2(x, x^{'}) = k_1(x, x^{'})k_1(x, x^{'}), ...\; k_p(x, x^{'}) = k_{p/2}(x, x^{'})k_{p/2}(x, x^{'})$. If p is even then $k(x, x^{'}) := k_{p/2}(x, x^{'})k_{p/2}(x, x^{'})$ and $k(x, x^{'}) := k_{p-1}(x, x^{'})k_{1}(x, x^{'})$ if p is odd. Therefore if $k_1$ is a kernel, then k is also a kernel.
 \end{adjustwidth}
@@ -362,14 +357,37 @@ run_kfold_adaboost <- function(X, y, B, K) {
 \end{adjustwidth}
 
 
-
+\vspace{4em}
 
 \subproblem{Plot the training error and the test error as a function of b}
-\begin{adjustwidth}{3.5em}{0em}  
+\begin{center}
+Basic Adabost, final test error on 20\% test set with 100 iterations: 0.05
+\includegraphics[width=.49\textwidth]{agg_basic_test}
+\includegraphics[width=.49\textwidth]{agg_basic_train}\\
+AdaBoost with 5-Fold cross validation, final error on 20\% test set with 100 iterations: 0.025
+\includegraphics[width=.49\textwidth]{agg_kfold_test}
+\includegraphics[width=.49\textwidth]{agg_kfold_train}\\
+\end{center}
 \begin{lstlisting}
+run_adaboost <-function() {
+    source('utils.r')
+    X <- data.frame(read.table('uspsdata.txt'))
+    y <- scan('uspscl.txt')
 
+    results <- run_basic_adaboost(X,y,10)
+    kfold_results <- run_kfold_adaboost(X,y,100,5)
+
+
+    plot(lowess(results$errors$agg_train), type='l')
+    plot(lowess(results$errors$agg_test), type='l')
+    matplot(t(kfold_results$errors$train), type='l', xlab='Adaboost Iteration',ylab='Aggregated Mean Training Error', lty=5,lwd=2, col=c(2,3,4,8,6))
+    lines(colMeans(kfold_results$errors$train),lwd=2)
+    title(sub='Solid line is mean of independent k-fold data', cex.sub=.8)
+    matplot(t(kfold_results$errors$test), type='l', xlab='Adaboost Iteration',ylab='Aggregated Mean Test Error', lty=5,lwd=2, col=c(2,3,4,8,6))
+    lines(colMeans(kfold_results$errors$test),lwd=2)
+    title(sub='Solid line is mean of independent k-fold data', cex.sub=.8)
+}
 \end{lstlisting}
-\end{adjustwidth}
 
 %%%% don't delete the last line!
 \end{document}
